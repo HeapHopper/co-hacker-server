@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "co-hacker-server"
+version = "0.1.0"
+description = ""
+authors = ["heaphopper <tzvienir@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+dotenv = "^0.9.9"
+fastapi = "^0.115.12"
+langgraph = "^0.4.7"
+langchain-openai = "^0.3.18"
+uvicorn = "^0.34.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
