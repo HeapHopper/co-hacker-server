@@ -1,23 +1,33 @@
 from langgraph.graph import StateGraph
 from pydantic import BaseModel
-from models import SnippetInput, CodeSnippet
-from prompt_chain import chain
+from models import SnippetInput, CodeSnippet, AskAiRequest, AskAiResponse
+from prompt_chain import code_analysis_chain, ask_ai_chain
 from langsmith import traceable
 
 # LangGraph-compatible state
-class GraphState(BaseModel):
+class CodeAnalysisGraphState(BaseModel):
     input: SnippetInput
     output: CodeSnippet | None = None
 
 # Single-node LangGraph
 @traceable(name="analyze_snippet", description="Analyze code snippet for vulnerabilities")
-def analyze_node(state: GraphState) -> dict:
-    result = chain.invoke({"snippet": state.input.snippet})
+def analyze_node(state: CodeAnalysisGraphState) -> dict:
+    result = code_analysis_chain.invoke({"snippet": state.input.snippet})
     return {"output": result}
 
-def build_graph():
-    builder = StateGraph(GraphState)
+def build_code_analysis_graph():
+    builder = StateGraph(CodeAnalysisGraphState)
     builder.add_node("analyze", analyze_node)
     builder.set_entry_point("analyze")
     builder.set_finish_point("analyze")
     return builder.compile()
+
+
+class AskAiGraphState(BaseModel):
+    input: AskAiRequest
+    output: AskAiResponse | None = None
+
+@traceable(name="ask_ai", description="Ask AI for code analysis")
+def ask_ai_node(state: AskAiGraphState) -> dict:
+    result = ask_ai_chain.invoke({"snippet": state.input.snippet})
+    return {"output": result}
