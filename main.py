@@ -7,6 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from models import SnippetInput, CodeSnippet, mock_vulnerable_snippet
 from graph import build_code_analysis_graph, CodeAnalysisGraphState
 
+from models import AskAiRequest, AskAiResponse
+from graph import build_ask_ai_graph, AskAiGraphState
+
 import uvicorn
 import os
 from langsmith import traceable
@@ -23,6 +26,8 @@ app.add_middleware(
 
 # Build LangGraph
 build_code_analysis_graph = build_code_analysis_graph()
+build_ask_ai_graph = build_ask_ai_graph()
+
 
 @app.post("/analyze", response_model=CodeSnippet)
 async def analyze_snippet(input: SnippetInput):
@@ -30,6 +35,14 @@ async def analyze_snippet(input: SnippetInput):
         result_state = build_code_analysis_graph.invoke(CodeAnalysisGraphState(input=input))
         print()
         # return result_state.output
+        return result_state['output']
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/ask_ai", response_model=AskAiResponse)
+async def ask_ai(input: AskAiRequest):
+    try:
+        result_state = build_ask_ai_graph.invoke(AskAiGraphState(input=input))
         return result_state['output']
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
