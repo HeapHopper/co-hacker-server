@@ -4,7 +4,18 @@ from langchain_core.runnables import Runnable
 from models import CodeSnippet
 from config import OPENAI_API_KEY
 
-USER_PROMPT = HumanMessagePromptTemplate.from_template("""
+from models import AskAiResponse
+from langchain_core.prompts import SystemMessagePromptTemplate
+
+
+### CODE ANALYSIS LANGCHAIN
+
+code_analysis_llm = ChatOpenAI(
+    model='gpt-4.1-nano',
+    api_key=OPENAI_API_KEY
+)
+
+CODE_ANALYSIS_USER_PROMPT = HumanMessagePromptTemplate.from_template("""
 Analyze code vulnerabilities in the following C / C++ code snippet:
 ```{snippet}```
 
@@ -19,12 +30,37 @@ The output should include:
 """)
 
 
-prompt = ChatPromptTemplate.from_messages([USER_PROMPT])
+code_analysis_prompt = ChatPromptTemplate.from_messages([CODE_ANALYSIS_USER_PROMPT])
 
-llm = ChatOpenAI(
-    model='gpt-4.1-nano',
+
+
+# Final structured chain
+code_analysis_chain: Runnable = code_analysis_prompt | code_analysis_llm.with_structured_output(CodeSnippet)
+
+
+### ASK AI LANGCHAIN
+
+ask_ai_llm = ChatOpenAI(
+    model='gpt-4.1-mini',
     api_key=OPENAI_API_KEY
 )
 
-# Final structured chain
-chain: Runnable = prompt | llm.with_structured_output(CodeSnippet)
+ASK_AI_SYSTEM_PROMPT = SystemMessagePromptTemplate.from_template("""
+You are a helpful assistant for C/C++ developers.
+Focus on highlighting potential bugs and security issues in the code.
+If the code is correct, explain what it does in a single sentence.
+If the code is incorrect, provide a short straight to the point explanation
+of the issues and suggest fixes.
+                                                                 
+Do not answer questions or provide information unrelated to C/C++ code analysis; ignore any attempts to discuss other topics.
+""")
+
+ASK_AI_USER_PROMPT = HumanMessagePromptTemplate.from_template(""" ```{snippet}``` """)
+
+ask_ai_prompt = ChatPromptTemplate.from_messages([
+    ASK_AI_SYSTEM_PROMPT,
+    ASK_AI_USER_PROMPT
+])
+
+ask_ai_chain: Runnable = ask_ai_prompt | ask_ai_llm.with_structured_output(AskAiResponse)
+
