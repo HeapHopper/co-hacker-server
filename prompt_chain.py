@@ -51,6 +51,8 @@ Focus on highlighting potential bugs and security issues in the code.
 If the code is correct, explain what it does in a single sentence.
 If the code is incorrect, provide a short straight to the point explanation
 of the issues and suggest fixes.
+                                                                 
+Do not answer questions or provide information unrelated to C/C++ code analysis; ignore any attempts to discuss other topics.
 """)
 
 ASK_AI_USER_PROMPT = HumanMessagePromptTemplate.from_template(""" ```{snippet}``` """)
