@@ -4,15 +4,15 @@ load_dotenv()
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import SnippetInput, CodeSnippet, mock_vulnerable_snippet
-from graph import build_code_analysis_graph, CodeAnalysisGraphState
 
-from models import AskAiRequest, AskAiResponse
-from graph import build_ask_ai_graph, AskAiGraphState
+from code_analysis.code_analysis_models import SnippetInput, CodeSnippet
+from code_analysis.code_analysis_graph import build_code_analysis_graph, CodeAnalysisGraphState
+
+from ask_ai.ask_ai_models import AskAiRequest, AskAiResponse
+from ask_ai.ask_ai_graph import build_ask_ai_graph, AskAiGraphState
 
 import uvicorn
 import os
-from langsmith import traceable
 
 app = FastAPI()
 
