@@ -22,14 +22,16 @@ The output should include:
 - vulnerability_type: type of issue
 - vulnerability: short description
 - suggest_fix: ONLY the fixed C/C++ code that addresses the vulnerability.
+  - When providing the fixed code, include the entire original code with only the necessary changes applied.
+  - Do not omit or collapse unchanged lines; preserve all original lines except those that require modification.
+  - Prefer standard library (std) functions where applicable.
   - Include a brief comment in the code explaining the fix.
   - DO NOT include markdown code fences (like ```), language tags, or any explanation outside the code.
-  - keep identation consistent with the original code.
+  - Keep indentation consistent with the original code.
 """)
 
 
 code_analysis_prompt = ChatPromptTemplate.from_messages([CODE_ANALYSIS_USER_PROMPT])
-
 
 
 # Final structured chain
