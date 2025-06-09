@@ -1,15 +1,13 @@
-from dotenv import load_dotenv
 # Load environment variables from .env file
+from dotenv import load_dotenv
 load_dotenv()
 
+# Import fastapi libraries
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from code_analysis.code_analysis_models import SnippetInput, CodeSnippet
-from code_analysis.code_analysis_graph import build_code_analysis_graph, CodeAnalysisGraphState
-
-from ask_ai.ask_ai_models import AskAiRequest, AskAiResponse
-from ask_ai.ask_ai_graph import build_ask_ai_graph, AskAiGraphState
+# Import the main router
+from router import router as main_router
 
 import uvicorn
 import os
@@ -24,28 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Build LangGraph
-build_code_analysis_graph = build_code_analysis_graph()
-build_ask_ai_graph = build_ask_ai_graph()
-
-
-@app.post("/analyze", response_model=CodeSnippet)
-async def analyze_snippet(input: SnippetInput):
-    try:
-        result_state = build_code_analysis_graph.invoke(CodeAnalysisGraphState(input=input))
-        print()
-        # return result_state.output
-        return result_state['output']
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.post("/ask_ai", response_model=AskAiResponse)
-async def ask_ai(input: AskAiRequest):
-    try:
-        result_state = build_ask_ai_graph.invoke(AskAiGraphState(input=input))
-        return result_state['output']
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Include the main router
+app.include_router(main_router)
 
 if __name__ == "__main__":
 
