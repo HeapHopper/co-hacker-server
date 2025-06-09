@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+### AI Models for Code Snippet Analysis
+
 class SnippetInput(BaseModel):
     snippet: str
 
