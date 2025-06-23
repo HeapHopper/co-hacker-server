@@ -25,6 +25,11 @@ app.add_middleware(
 # Include the main router
 app.include_router(main_router)
 
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from Railway!"}
+
 if __name__ == "__main__":
 
     # Optional: confirm that LangSmith is active
