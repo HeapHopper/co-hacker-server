@@ -1,26 +1,26 @@
-# Co Hacker Server repository
+# Co-Hacker Server Repository
 
-## The Co-Hacker VSCode extension
+## The Co-Hacker VSCode Extension
 
-This repository is a FastAPI backend service for the [Co-Hacker](https://github.com/HeapHopper/co-hacker) VSCode extension. But it is also where the AI models, prompts and structured queries are defined and implemented, rather than just a REST queries router.
+This repository contains a FastAPI backend service for the [Co-Hacker](https://github.com/HeapHopper/co-hacker) VSCode extension. It is not just a REST query router; it is first and foremost where the AI models, prompts, and structured queries are defined and implemented.
 
-Co-Hacker is a co-pilot extension made by developers for developers, intending to find software insecurities in development time - before compilation and/or runtime phases - providing "on-the-fly" solutions to vulnerable code.
+Co-Hacker is a co-pilot extension made by developers for developers, aiming to find software insecurities during development—before compilation and/or runtime—by providing "on-the-fly" solutions to vulnerable code.
 
-In practice, the VSCode extension is just a simple client-side logic extracting code selections to be examined and replacing vulnerable code with a secure one. It does not have any direct contact with the LLM itself and is unaware of any AI agent behavior.
+In practice, the VSCode extension is a simple client-side logic that extracts code selections to be examined and replaces vulnerable code with secure alternatives. It does not have any direct contact with the LLM itself and is unaware of any AI agent behavior.
 
-The queries from the VSCode extension are routed to their designated endpoint in this server, where each request for automatic or manual code analysis is processed using the right LLM model (not to confuse with model in the context of `BaseModel`) with a prompt specifying the secure-code mission.
+Queries from the VSCode extension are routed to their designated endpoints in this server, where each request for automatic or manual code analysis is processed using the appropriate LLM model (not to be confused with `BaseModel`), with a prompt specifying the secure-code mission.
 
-This service is hosted online on [railway.app](https://railway.com/).
+This service is hosted online on [railway.app](https://railway.app/).
 
-## Working principle
+## Working Principle
 
-Co-Hacker supports several features - some a are automatic and some manual - but the working principle for how a code snippet is being assessed to be secure or not, how a fix suggestion is being generated and how it can be applied back to the user code - is the same for all cases.
+Co-Hacker supports several features—some automatic and some manual—but the working principle for assessing code security, generating fix suggestions, and applying them back to the user code is the same for all cases.
 
-To make things more things more tangible we will follow the `inline_assistant` feature which is an automatic mechanism to find code vulnerabilities in a certain line of code. But the process milestones are the same for all other features.
+To make things more tangible, we will follow the `inline_assistant` feature, which is an automatic mechanism to find code vulnerabilities in a specific line of code. The process milestones are the same for all other features.
 
 ### Model
 
-Each use case starts with a strict model for the feature request and response properties:
+Each use case starts with a strict model for the feature's request and response properties:
 
 ```python
 class InlineAssistantRequest(BaseModel):
@@ -34,17 +34,17 @@ class InlineAssistantResponse(BaseModel):
     suggest_fix: str
 ```
 
-In the case of `inline_assistant`, the server expects to receive the current line of code, along with the current scope (`{}`) and the current file. This data should be sufficient for determine whether the line has a potential security risk.
+For `inline_assistant`, the server expects to receive the current line of code, along with the current scope (`{}`) and the current file. This data should be sufficient to determine whether the line has a potential security risk.
 
-In return, the service is committing to provide the following information: is the code secure, if not what is the vulnerability, and how can it be fixed. Later those properties are used by the client (the VSCode extension) to modify the code or present warnings / solutions in the editor.
+In return, the service provides the following information: whether the code is secure, if not, what the vulnerability is, and how it can be fixed. These properties are later used by the client (the VSCode extension) to modify the code or present warnings/solutions in the editor.
 
 ### Prompt
 
-After defining the request and response scheme, it is time to create a prompt which will generate the desired response, based on given request. The "Prompt" step is composed of three steps:
+After defining the request and response schema, it is time to create a prompt that will generate the desired response based on the given request. The "Prompt" step is composed of three parts:
 
-#### 1. LLM definition
+#### 1. LLM Definition
 
-for example:
+For example:
 
 ```python
 inline_assistant_llm = ChatOpenAI(
@@ -53,11 +53,11 @@ inline_assistant_llm = ChatOpenAI(
 )
 ```
 
-the `inline_assistant` uses the `nano` model for fast, "real time" response latency.
+The `inline_assistant` uses the `nano` model for fast, "real-time" response latency.
 
 #### 2. Prompt Templates
 
-Using [langchain](https://www.langchain.com/) module objects like `HumanMessagePromptTemplate`, `SystemMessagePromptTemplate` etc. we create a prompt (single or chain) for the task of inline code assistant.
+Using [langchain](https://www.langchain.com/) module objects like `HumanMessagePromptTemplate`, `SystemMessagePromptTemplate`, etc., we create a prompt (single or chain) for the task of inline code assistance.
 
 The prompt refers to data given in the request model, for example:
 
@@ -65,14 +65,15 @@ The prompt refers to data given in the request model, for example:
 INLINE_ASSISTANT_USER_PROMPT = HumanMessagePromptTemplate.from_template("""
 You are a C/C++ inline code assistant ... focusing on vulnerability detection and secure code.
                                                                         
-start with analyzing the current line of code:
+Start by analyzing the current line of code:
 ```{line}```
                                                                         
-The current scope is also provided for context...
+The current scope is also provided for context:
 ```{scope}```
+""")
 ```
 
-The prompt mentions the response model as well:
+The prompt also mentions the response model:
 
 ```python
 """
@@ -85,11 +86,11 @@ The output should include:
 """
 ```
 
-This step is finished with a `ChatPromptTemplate` instance, provided by `langchain` for making an LLM specific prompt instance.
+This step is completed with a `ChatPromptTemplate` instance, provided by `langchain`, for making an LLM-specific prompt instance.
 
 #### Creating Runnable
 
-using `langchain.Runnable` the previous prompt templates are now an action that can be run to generate structured response:
+Using `langchain.Runnable`, the previous prompt templates are now an action that can be run to generate a structured response:
 
 ```python
 inline_assistant_chain: Runnable = inline_assistant_prompt | inline_assistant_llm.with_structured_output(InlineAssistantResponse)
@@ -97,13 +98,13 @@ inline_assistant_chain: Runnable = inline_assistant_prompt | inline_assistant_ll
 
 ### Graph
 
-We finished the last step with a `langchain.Runnable` instance. Using `invoke()` we can send a structured query to the LLM and use the results. But we lack one thing which is very important in production: Tracing.
+We finished the last step with a `langchain.Runnable` instance. Using `invoke()`, we can send a structured query to the LLM and use the results. However, one important thing is missing for production: tracing.
 
 The "Graph" step has two tasks:
 
-#### Traceable nodes
+#### Traceable Nodes
 
-Each runnable should have its own "node" - a function that wraps the `invoke()` method with given request and response data. This node is being traced using `traceable` decorator by `langsmith` module:
+Each runnable should have its own "node"—a function that wraps the `invoke()` method with the given request and response data. This node is traced using the `traceable` decorator from the `langsmith` module:
 
 ```python
 # LangGraph-compatible state
@@ -122,11 +123,11 @@ def inline_assistant_node(state: InlineAssistantGraphState) -> dict:
     return {"output": result}
 ```
 
-#### Build complex graph
+#### Build Complex Graph
 
-Using `langgraph` we can orchestrate those nodes into a complex graph, contacting `Runnable` actions to create even more concrete solution to each case.
+Using `langgraph`, we can orchestrate these nodes into a complex graph, connecting `Runnable` actions to create more concrete solutions for each case.
 
-For now, the graph is composed of single graph:
+For now, the graph is composed of a single node:
 
 ```python
 def build_inline_assistant_graph():
@@ -140,7 +141,7 @@ def build_inline_assistant_graph():
 ### Route
 
 The "Route" is simply the FastAPI endpoint handling requests from the VSCode extension.
-Its task is to invoke the `StateGrpah` for creating the response:
+Its task is to invoke the `StateGraph` to create the response:
 
 ```python
 @router.post("/", response_model=InlineAssistantResponse)
@@ -150,26 +151,23 @@ async def inline_assistant(input: InlineAssistantRequest):
         return result_state['output']
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 ```
 
-All the different feature routes are aggregated to the app router, creating a combined service that can be hosted as a single app.
+All the different feature routes are aggregated into the app router, creating a combined service that can be hosted as a single app.
 
-## Summary of used technologies
+## Summary of Used Technologies
 
 ### Routing
 
-In the context of plain Python modules it is worth to mention `pydantic` and `fastapi` for implementing the routing logic and defining request / response interfaces.
+In the context of plain Python modules, it is worth mentioning `pydantic` and `fastapi` for implementing the routing logic and defining request/response interfaces.
 
 ### Hosting Service
 
-The application is hosted online by [railway.app](https://railway.com/) services
+The application is hosted online by [railway.app](https://railway.app/) services.
 
 ### LLM Framework
 
-- `langchain` - for creating structured queries and runnable objects
-- `langsmith` - for tracing LLM queries
-- `langgraph` - for composing traceable nodes into a state-graph for a more targeted solution
-
-
+- `langchain` – for creating structured queries and runnable objects
+- `langsmith` – for tracing LLM queries
+- `langgraph` – for composing traceable nodes into a state graph for more targeted solutions
 
