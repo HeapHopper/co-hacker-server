@@ -1,5 +1,4 @@
-# co-hacker-server
-co-hacker-server
+# Co Hacker Server repository
 
 ## The Co-Hacker VSCode extension
 
@@ -140,11 +139,37 @@ def build_inline_assistant_graph():
 
 ### Route
 
+The "Route" is simply the FastAPI endpoint handling requests from the VSCode extension.
+Its task is to invoke the `StateGrpah` for creating the response:
 
-## Supported features
+```python
+@router.post("/", response_model=InlineAssistantResponse)
+async def inline_assistant(input: InlineAssistantRequest):
+    try:
+        result_state = inline_assistant_graph.invoke(InlineAssistantGraphState(input=input))
+        return result_state['output']
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-### AskAI
+```
 
+All the different feature routes are aggregated to the app router, creating a combined service that can be hosted as a single app.
+
+## Summary of used technologies
+
+### Routing
+
+In the context of plain Python modules it is worth to mention `pydantic` and `fastapi` for implementing the routing logic and defining request / response interfaces.
+
+### Hosting Service
+
+The application is hosted online by [railway.app](https://railway.com/) services
+
+### LLM Framework
+
+- `langchain` - for creating structured queries and runnable objects
+- `langsmith` - for tracing LLM queries
+- `langgraph` - for composing traceable nodes into a state-graph for a more targeted solution
 
 
 
