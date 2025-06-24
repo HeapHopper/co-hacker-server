@@ -47,3 +47,122 @@ inline_assistant_prompt = ChatPromptTemplate.from_messages([INLINE_ASSISTANT_USE
 
 # Final structured chain
 inline_assistant_chain: Runnable = inline_assistant_prompt | inline_assistant_llm.with_structured_output(InlineAssistantResponse)
+
+
+
+### Complex Graph stuff
+
+### initial_classifier
+initial_classifier_prompt = ChatPromptTemplate.from_messages([
+    SystemMessage("You are a static code classifier that categorizes a C/C++ line of code based on security characteristics."),
+    HumanMessagePromptTemplate.from_template("""
+Line:
+```c++
+{line}
+```
+ {scope}
+{file}
+Return a JSON object like:
+{
+"confidence_level": float, // 0.0 to 1.0
+"unsafe_pattern_detected": bool,
+"suggestion_type": "safe" | "vulnerable" | "std_upgrade" | "scope_check" | "file_check"
+}
+""")
+])
+
+initial_classifier_chain: Runnable = initial_classifier_prompt | inline_assistant_llm.with_structured_output(
+    schema=Annotated[dict, {
+        "confidence_level": float,
+        "unsafe_pattern_detected": bool,
+        "suggestion_type": str
+    }]
+)
+
+### handle_safe
+
+# No prompt is needed for handling a safe code, nothing to generate :-) !
+
+### handle_vulnerable
+
+vulnerability_prompt = ChatPromptTemplate.from_messages([
+    SystemMessage("You are a C++ secure coding expert. Find and fix vulnerabilities."),
+    HumanMessagePromptTemplate.from_template("""
+Analyze this code:
+```c++
+{line}
+```
+{scope}
+{file}
+Respond with JSON:
+{
+"is_vulnerable": true,
+"vulnerability": {
+"description": "...",
+"vulnerable_code": "..."
+},
+"suggest_fix": "..."
+}
+""")
+])
+
+vulnerability_chain: Runnable = vulnerability_prompt | inline_assistant_llm.with_structured_output(InlineAssistantResponse)
+
+
+
+### check_scope
+
+scope_check_prompt = ChatPromptTemplate.from_messages([
+    SystemMessage("You analyze scope-level security in C++."),
+    HumanMessagePromptTemplate.from_template("""
+Line:
+```c++
+{line}
+                                             {scope}
+                                             Are there any risks like Use After Free, Out-of-Bounds access, Double Free, etc.?
+
+Respond JSON:
+{
+"confidence_level": float,
+"suggestion_type": "vulnerable" | "std_upgrade" | "file_check" | "safe"
+}
+""")
+])
+
+scope_check_chain = scope_check_prompt | inline_assistant_llm.with_structured_output(
+schema=Annotated[dict, {
+"confidence_level": float,
+"suggestion_type": str
+}]
+)
+
+
+### check_file
+
+# check file will use the same chain as check_scope, but giving the entire file as scope!
+
+
+
+### suggest_std_upgrade
+
+std_upgrade_prompt = ChatPromptTemplate.from_messages([
+    SystemMessage("You convert legacy or unsafe C++ code to use modern C++ features."),
+    HumanMessagePromptTemplate.from_template("""
+Line:
+```c++
+{line}
+                                             If applicable, suggest replacing it with std::vector, std::copy, smart pointers, or similar safer features.
+
+Respond JSON:
+{
+"is_vulnerable": false,
+"vulnerability": {
+"description": "Safe but can be improved with std library.",
+"vulnerable_code": "...original line..."
+},
+"suggest_fix": "...modern equivalent..."
+}
+""")
+])
+
+std_upgrade_chain = std_upgrade_prompt | inline_assistant_llm.with_structured_output(InlineAssistantResponse)
