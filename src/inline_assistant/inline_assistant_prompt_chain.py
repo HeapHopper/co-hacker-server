@@ -149,22 +149,39 @@ vulnerability_chain: Runnable = vulnerability_prompt | inline_assistant_llm.with
 
 
 
-### check_scope
+### scope_check
 
 scope_check_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("You analyze scope-level security in C++."),
+    SystemMessage("""
+      You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
+      You will be given the user current line of code - which needs further analysis.
+      The current scope is also provided for context, use it to assess the safety of the line of code.
+      Provide a structured response.
+    """),
     HumanMessagePromptTemplate.from_template("""
-Line:
-```c++
-{line}
-                                             {scope}
-                                             Are there any risks like Use After Free, Out-of-Bounds access, Double Free, etc.?
+      Line:
+      ```c++
+      {line}
+      ```
+      scope:
+      ```c++
+      {scope}
+      ```
+      Make sure there are no security issues. Look for Use After Free, Double Free, Out of bounds access, dangerous type casting (signed - unsigned, long-short, etc.)
 
-Respond JSON:
-{
-"confidence_level": float,
-"suggestion_type": "vulnerable" | "std_upgrade" | "file_check" | "safe"
-}
+      Respond with JSON:
+      {
+        "confidence_level": float,
+        "suggestion_type": "vulnerable" | "std_upgrade" | "file_check" | "safe"
+      }
+                                             
+    - The confidence_level should be a float between 0.0 and 1.0, indicating how confident you are about the line of code being safe.
+    - suggestion_type should be one of the following:                                                                      
+        - If line of code is likely (0.6 and above) to be secure in the context of the scope - suggestion_type should be "safe".
+        - If there is a plain clear unsecure / undefined behavior e.g. - suggestion_type should be "vulnerable".
+        - if the line is safe but old non-standard copy related methods are mentioned in the line - suggestion_type should be "std_upgrade".
+        - otherwise, meaning: there is not enough information to decide whether or not there is a security issue with the line, even in the context of the scope - suggestion_type should be "file_check".
+
 """)
 ])
 
@@ -176,10 +193,47 @@ schema=Annotated[dict, {
 )
 
 
-### check_file
+### file_check
 
-# check file will use the same chain as check_scope, but giving the entire file as scope!
+file_check_prompt = ChatPromptTemplate.from_messages([
+    SystemMessage("""
+      You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
+      You will be given the user current line of code and its scope - which needs further analysis even after looking at the scope.
+      The current file provided for context, use it to assess the safety of the line of code and make a final decision if the line is safe or not.
+      Provide a structured response.
+    """),
+    HumanMessagePromptTemplate.from_template("""
+      Line:
+      ```c++
+      {line}
+      ```
+      scope:
+      ```c++
+      {scope}
+      ```
+                                             
+      file:
+      ```c++
+      {file}
+      ```
 
+      Respond with JSON:
+      {
+        "suggestion_type": "vulnerable" | "safe"
+      }
+
+    Based on the analysis of the line of code, scope, and file - make a final decision if the line is safe or not.                                      
+    - suggestion_type should be one of the following:                                                                      
+        - If line of code is safe - suggestion_type should be "safe".
+        - If it is unsecure / undefined behavior e.g. - suggestion_type should be "vulnerable".
+""")
+])
+
+file_check_chain = scope_check_prompt | inline_assistant_llm.with_structured_output(
+schema=Annotated[dict, {
+"suggestion_type": str
+}]
+)
 
 
 ### suggest_std_upgrade
