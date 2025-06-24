@@ -129,6 +129,19 @@ vulnerability_prompt = ChatPromptTemplate.from_messages([
       },
       "suggest_fix": "..."
       }
+                                             
+      - is_vulnerable: true or false
+      - vulnerability:
+          - description: a brief description of the vulnerability
+          - vulnerable_code: the specific code that is vulnerable                                                        
+      - suggest_fix: ONLY the fixed C/C++ code that addresses the vulnerability.
+        - The fix must be a one-liner suggestion that will be offered to the developer.
+        - Prefer standard library (std) functions where applicable.
+        - After the code fix, you MUST include a brief comment in the code explaining the fix.
+          - The comment MUST ALWAYS start with the exact prefix: "Co-Hacker: "
+          - Never omit or change this prefix; every fix must include it.
+        - DO NOT include markdown code fences (like ```), language tags, or any explanation outside the code.
+        - Keep indentation consistent with the original code.
 """)
 ])
 
