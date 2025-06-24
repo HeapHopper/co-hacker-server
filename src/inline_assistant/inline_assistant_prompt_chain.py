@@ -1,4 +1,5 @@
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
+from typing import Annotated
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessage
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import Runnable
 from config import OPENAI_API_KEY
