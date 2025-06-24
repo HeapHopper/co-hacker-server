@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from langsmith import traceable
 
 from inline_assistant.inline_assistant_models import InlineAssistantRequest, InlineAssistantResponse
-# from inline_assistant.inline_assistant_prompt_chain import inline_assistant_chain
 from inline_assistant.inline_assistant_prompt_chain import initial_classifier_chain, vulnerability_chain, scope_check_chain, file_check_chain, std_upgrade_chain
 
 class InlineAssistantGraphState(BaseModel):
@@ -17,14 +16,13 @@ class InlineAssistantGraphState(BaseModel):
 
 @traceable(name="initial_classifier")
 def initial_classifier_node(state: InlineAssistantGraphState) -> dict:
+        
     result = initial_classifier_chain.invoke({
-        "line": state.input.current_line,
-        "scope": state.input.current_scope,
-        "file": state.input.current_file
+        "line": state.input.current_line
     })
-    state.confidence_level = result["confidence_level"]
-    state.unsafe_pattern_detected = result["unsafe_pattern_detected"]
-    state.suggestion_type = result["suggestion_type"]
+    state.confidence_level = result.confidence_level
+    state.unsafe_pattern_detected = result.unsafe_pattern_detected
+    state.suggestion_type = result.suggestion_type
     return state.dict()
 
 @traceable(name="handle_safe")
@@ -40,8 +38,7 @@ def handle_safe_node(state: InlineAssistantGraphState) -> dict:
 def handle_vulnerable_node(state: InlineAssistantGraphState) -> dict:
     state.output = vulnerability_chain.invoke({
         "line": state.input.current_line,
-        "scope": state.input.current_scope,
-        "file": state.input.current_file
+        "scope": state.input.current_scope
     })
     return state.dict()
 
@@ -57,11 +54,11 @@ def check_scope_node(state: InlineAssistantGraphState) -> dict:
 
 @traceable(name="check_file")
 def check_file_node(state: InlineAssistantGraphState) -> dict:
-    result = scope_check_chain.invoke({  # can reuse same prompt
+    result = file_check_chain.invoke({
         "line": state.input.current_line,
-        "scope": state.input.current_file  # now use entire file
+        "scope": state.input.current_file,
+        "file": state.input.current_file
     })
-    state.confidence_level = result["confidence_level"]
     state.suggestion_type = result["suggestion_type"]
     return state.dict()
 
@@ -72,20 +69,15 @@ def suggest_std_upgrade_node(state: InlineAssistantGraphState) -> dict:
     })
     return state.dict()
 
-
-# # Single-node LangGraph
-# @traceable(name="inline_assistant", description="Inline code assistant for C/C++ vulnerabilities")
-# def inline_assistant_node(state: InlineAssistantGraphState) -> dict:
-#     result = inline_assistant_chain.invoke({
-#         "line": state.input.current_line,
-#         "scope": state.input.current_scope,
-#         "file": state.input.current_file
-#     })
-#     return {"output": result}
-
 def build_inline_assistant_graph():
     builder = StateGraph(InlineAssistantGraphState)
+    
     builder.add_node("initial_classifier", initial_classifier_node)
+    builder.add_node("handle_safe", handle_safe_node)
+    builder.add_node("handle_vulnerable", handle_vulnerable_node)
+    builder.add_node("check_scope", check_scope_node)
+    builder.add_node("check_file", check_file_node)
+    builder.add_node("suggest_std_upgrade", suggest_std_upgrade_node)
 
     builder.add_conditional_edges(
         "initial_classifier",
