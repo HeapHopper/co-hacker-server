@@ -239,23 +239,40 @@ schema=Annotated[dict, {
 ### suggest_std_upgrade
 
 std_upgrade_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("You convert legacy or unsafe C++ code to use modern C++ features."),
+    SystemMessage("""
+      You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
+      You will be given the user current line of code - which needs to be upgraded to use modern C++ features.
+      for example:
+      - suggest replace raw pointers with smart pointers or std::vector
+      - suggest replace `for(int i = 0; i < length; i++){}` memory copy loop with `std::copy`
+      - suggest replace printf() with std::cout (avoiding format string attacks)
+      - etc.
+    """),
     HumanMessagePromptTemplate.from_template("""
-Line:
-```c++
-{line}
-                                             If applicable, suggest replacing it with std::vector, std::copy, smart pointers, or similar safer features.
-
-Respond JSON:
-{
-"is_vulnerable": false,
-"vulnerability": {
-"description": "Safe but can be improved with std library.",
-"vulnerable_code": "...original line..."
-},
-"suggest_fix": "...modern equivalent..."
-}
-""")
+      Line:
+      ```c++
+      {line}
+      ```
+      Suggest a modern C++ equivalent for the line of code and return a structured response:
+      Respond with JSON:
+      {
+        "is_vulnerable": false,
+        "vulnerability": {
+        "description": "Safe but can be improved with std library.",
+        "vulnerable_code": "...original line..."
+      },
+      "suggest_fix": "...modern equivalent..."
+      }
+                                             
+      - suggest_fix emphasis: ONLY the fixed C/C++ code that addresses the vulnerability.
+        - The fix must be a one-liner suggestion that will be offered to the developer.
+        - Prefer standard library (std) functions where applicable.
+        - After the code fix, you MUST include a brief comment in the code explaining the fix.
+          - The comment MUST ALWAYS start with the exact prefix: "Co-Hacker: "
+          - Never omit or change this prefix; every fix must include it.
+        - DO NOT include markdown code fences (like ```), language tags, or any explanation outside the code.
+        - Keep indentation consistent with the original code.
+    """)
 ])
 
 std_upgrade_chain = std_upgrade_prompt | inline_assistant_llm.with_structured_output(InlineAssistantResponse)
