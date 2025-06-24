@@ -1,10 +1,11 @@
 from typing import Annotated
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import Runnable
 from config import OPENAI_API_KEY
 
 from inline_assistant.inline_assistant_models import InlineAssistantResponse
+from pydantic import BaseModel
 
 ### INLINE ASSISTANT LANGCHAIN
 
@@ -54,7 +55,7 @@ inline_assistant_chain: Runnable = inline_assistant_prompt | inline_assistant_ll
 
 ### initial_classifier
 initial_classifier_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("""
+    SystemMessagePromptTemplate.from_template("""
       You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
       You will be given the user current line of code, Your task is to analyze the code and provide a structured response.
       Start with analyzing the current line of code:
@@ -66,11 +67,11 @@ initial_classifier_prompt = ChatPromptTemplate.from_messages([
       ```
 
       Return a JSON object like:
-      {
-      "confidence_level": float, // 0.0 to 1.0
-      "unsafe_pattern_detected": bool,
-      "suggestion_type": "safe" | "vulnerable" | "std_upgrade" | "scope_check" | "file_check"
-      }
+      {{
+        "confidence_level": float, // 0.0 to 1.0
+        "unsafe_pattern_detected": bool,
+        "suggestion_type": "safe" | "vulnerable" | "std_upgrade" | "scope_check" | "file_check"
+      }}
 
       - The confidence_level should be a float between 0.0 and 1.0, indicating how confident you are about the line of code being safe.
       - unsafe_pattern_detected should be true if you detect any unsafe patterns in the line, otherwise false.
@@ -84,12 +85,13 @@ initial_classifier_prompt = ChatPromptTemplate.from_messages([
       """)
 ])
 
+class InitialClassifierResponse(BaseModel):
+    confidence_level: float
+    unsafe_pattern_detected: bool
+    suggestion_type: str
+
 initial_classifier_chain: Runnable = initial_classifier_prompt | inline_assistant_llm.with_structured_output(
-    schema=Annotated[dict, {
-        "confidence_level": float,
-        "unsafe_pattern_detected": bool,
-        "suggestion_type": str
-    }]
+    InitialClassifierResponse
 )
 
 ### handle_safe
@@ -99,7 +101,7 @@ initial_classifier_chain: Runnable = initial_classifier_prompt | inline_assistan
 ### handle_vulnerable
 
 vulnerability_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("""
+    SystemMessagePromptTemplate.from_template("""
       You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
       A code vulnerability has been detected in the following line of code by the previous agent action:
       ```c++
@@ -121,14 +123,14 @@ vulnerability_prompt = ChatPromptTemplate.from_messages([
       {scope}
       ```                                             
       Respond with JSON:
-      {
+      {{
       "is_vulnerable": true,
-      "vulnerability": {
+      "vulnerability": {{
       "description": "...",
       "vulnerable_code": "..."
-      },
+      }},
       "suggest_fix": "..."
-      }
+      }}
                                              
       - is_vulnerable: true or false
       - vulnerability:
@@ -152,7 +154,7 @@ vulnerability_chain: Runnable = vulnerability_prompt | inline_assistant_llm.with
 ### scope_check
 
 scope_check_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("""
+    SystemMessagePromptTemplate.from_template("""
       You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
       You will be given the user current line of code - which needs further analysis.
       The current scope is also provided for context, use it to assess the safety of the line of code.
@@ -170,10 +172,10 @@ scope_check_prompt = ChatPromptTemplate.from_messages([
       Make sure there are no security issues. Look for Use After Free, Double Free, Out of bounds access, dangerous type casting (signed - unsigned, long-short, etc.)
 
       Respond with JSON:
-      {
+      {{
         "confidence_level": float,
         "suggestion_type": "vulnerable" | "std_upgrade" | "file_check" | "safe"
-      }
+      }}
                                              
     - The confidence_level should be a float between 0.0 and 1.0, indicating how confident you are about the line of code being safe.
     - suggestion_type should be one of the following:                                                                      
@@ -185,18 +187,17 @@ scope_check_prompt = ChatPromptTemplate.from_messages([
 """)
 ])
 
-scope_check_chain = scope_check_prompt | inline_assistant_llm.with_structured_output(
-schema=Annotated[dict, {
-"confidence_level": float,
-"suggestion_type": str
-}]
-)
+class ScopeCheckResponse(BaseModel):
+  confidence_level: float
+  suggestion_type: str
+
+scope_check_chain = scope_check_prompt | inline_assistant_llm.with_structured_output(ScopeCheckResponse)
 
 
 ### file_check
 
 file_check_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("""
+    SystemMessagePromptTemplate.from_template("""
       You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
       You will be given the user current line of code and its scope - which needs further analysis even after looking at the scope.
       The current file provided for context, use it to assess the safety of the line of code and make a final decision if the line is safe or not.
@@ -218,9 +219,9 @@ file_check_prompt = ChatPromptTemplate.from_messages([
       ```
 
       Respond with JSON:
-      {
+      {{
         "suggestion_type": "vulnerable" | "safe"
-      }
+      }}
 
     Based on the analysis of the line of code, scope, and file - make a final decision if the line is safe or not.                                      
     - suggestion_type should be one of the following:                                                                      
@@ -229,17 +230,16 @@ file_check_prompt = ChatPromptTemplate.from_messages([
 """)
 ])
 
-file_check_chain = scope_check_prompt | inline_assistant_llm.with_structured_output(
-schema=Annotated[dict, {
-"suggestion_type": str
-}]
-)
+class FileCheckResponse(BaseModel):
+  suggestion_type: str
+
+file_check_chain = file_check_prompt | inline_assistant_llm.with_structured_output(FileCheckResponse)
 
 
 ### suggest_std_upgrade
 
 std_upgrade_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("""
+    SystemMessagePromptTemplate.from_template("""
       You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
       You will be given the user current line of code - which needs to be upgraded to use modern C++ features.
       for example:
@@ -255,14 +255,14 @@ std_upgrade_prompt = ChatPromptTemplate.from_messages([
       ```
       Suggest a modern C++ equivalent for the line of code and return a structured response:
       Respond with JSON:
-      {
+      {{
         "is_vulnerable": false,
-        "vulnerability": {
+        "vulnerability": {{
         "description": "Safe but can be improved with std library.",
         "vulnerable_code": "...original line..."
-      },
+      }},
       "suggest_fix": "...modern equivalent..."
-      }
+      }}
                                              
       - suggest_fix emphasis: ONLY the fixed C/C++ code that addresses the vulnerability.
         - The fix must be a one-liner suggestion that will be offered to the developer.
