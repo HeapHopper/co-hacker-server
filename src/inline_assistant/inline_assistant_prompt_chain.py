@@ -54,21 +54,34 @@ inline_assistant_chain: Runnable = inline_assistant_prompt | inline_assistant_ll
 
 ### initial_classifier
 initial_classifier_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("You are a static code classifier that categorizes a C/C++ line of code based on security characteristics."),
+    SystemMessage("""
+      You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
+      You will be given the current line of code, its scope, and the file name. Your task is to analyze the code and provide a structured response.
+      Start with analyzing the current line of code:
+      """),
     HumanMessagePromptTemplate.from_template("""
-Line:
-```c++
-{line}
-```
- {scope}
-{file}
-Return a JSON object like:
-{
-"confidence_level": float, // 0.0 to 1.0
-"unsafe_pattern_detected": bool,
-"suggestion_type": "safe" | "vulnerable" | "std_upgrade" | "scope_check" | "file_check"
-}
-""")
+      Line:
+      ```c++
+      {line}
+      ```
+
+      Return a JSON object like:
+      {
+      "confidence_level": float, // 0.0 to 1.0
+      "unsafe_pattern_detected": bool,
+      "suggestion_type": "safe" | "vulnerable" | "std_upgrade" | "scope_check" | "file_check"
+      }
+
+      - The confidence_level should be a float between 0.0 and 1.0, indicating how confident you are about the line of code being safe.
+      - unsafe_pattern_detected should be true if you detect any unsafe patterns in the line, otherwise false.
+      - suggestion_type should be one of the following:                                                                      
+        - If line of code is highly likely (0.9 and above) to be secure, e.g. it is a simple line using only primitives or standard methods/objects - suggestion_type should be "safe".
+        - If there is a plain clear unsecure / undefined behavior e.g. use of standard-deprecated unsecure memory related function, integer overflow, etc., - suggestion_type should be "vulnerable".
+        - if memory allocation / deallocation methods or operators are mentioned in the line - suggestion_type should be "scope_check".
+        - same goes for declaring or using raw pointers - suggestion_type should be "scope_check".
+        - if the line is safe but old non-standard copy related methods are mentioned in the line - suggestion_type should be "std_upgrade".
+        - otherwise, meaning: there is not enough information to decide whether or not there is a security issue with the line - suggestion_type should be "scope_check".
+      """)
 ])
 
 initial_classifier_chain: Runnable = initial_classifier_prompt | inline_assistant_llm.with_structured_output(
