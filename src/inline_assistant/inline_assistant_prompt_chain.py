@@ -56,11 +56,11 @@ inline_assistant_chain: Runnable = inline_assistant_prompt | inline_assistant_ll
 initial_classifier_prompt = ChatPromptTemplate.from_messages([
     SystemMessage("""
       You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
-      You will be given the current line of code, its scope, and the file name. Your task is to analyze the code and provide a structured response.
+      You will be given the user current line of code, Your task is to analyze the code and provide a structured response.
       Start with analyzing the current line of code:
       """),
     HumanMessagePromptTemplate.from_template("""
-      Line:
+      line:
       ```c++
       {line}
       ```
@@ -99,23 +99,36 @@ initial_classifier_chain: Runnable = initial_classifier_prompt | inline_assistan
 ### handle_vulnerable
 
 vulnerability_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage("You are a C++ secure coding expert. Find and fix vulnerabilities."),
+    SystemMessage("""
+      You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
+      A code vulnerability has been detected in the following line of code by the previous agent action:
+      ```c++
+      {line}
+      ```
+      The line scope is also provided for context:
+      ```c++
+      {scope}
+      ```
+      suggest a fix for the vulnerability in the line of code and return a structured response.
+    """),
     HumanMessagePromptTemplate.from_template("""
-Analyze this code:
-```c++
-{line}
-```
-{scope}
-{file}
-Respond with JSON:
-{
-"is_vulnerable": true,
-"vulnerability": {
-"description": "...",
-"vulnerable_code": "..."
-},
-"suggest_fix": "..."
-}
+      Vulnerable Line:
+      ```c++
+      {line}
+      ```
+      Scope:
+      ```c++
+      {scope}
+      ```                                             
+      Respond with JSON:
+      {
+      "is_vulnerable": true,
+      "vulnerability": {
+      "description": "...",
+      "vulnerable_code": "..."
+      },
+      "suggest_fix": "..."
+      }
 """)
 ])
 
