@@ -48,8 +48,8 @@ def check_scope_node(state: InlineAssistantGraphState) -> dict:
         "line": state.input.current_line,
         "scope": state.input.current_scope
     })
-    state.confidence_level = result["confidence_level"]
-    state.suggestion_type = result["suggestion_type"]
+    state.confidence_level = result.confidence_level
+    state.suggestion_type = result.suggestion_type
     return state.dict()
 
 @traceable(name="check_file")
@@ -59,7 +59,7 @@ def check_file_node(state: InlineAssistantGraphState) -> dict:
         "scope": state.input.current_file,
         "file": state.input.current_file
     })
-    state.suggestion_type = result["suggestion_type"]
+    state.suggestion_type = result.suggestion_type
     return state.dict()
 
 @traceable(name="suggest_std_upgrade")
