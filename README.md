@@ -1,5 +1,7 @@
 # Co-Hacker Server Repository
 
+![alt text](assets/logo.jpg)
+
 ## The Co-Hacker VSCode Extension
 
 This repository contains a FastAPI backend service for the [Co-Hacker](https://github.com/HeapHopper/co-hacker) VSCode extension. It is not just a REST query router; it is first and foremost where the AI models, prompts, and structured queries are defined and implemented.
