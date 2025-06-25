@@ -125,9 +125,9 @@ def inline_assistant_node(state: InlineAssistantGraphState) -> dict:
 
 #### Build Complex Graph
 
-Using `langgraph`, we can orchestrate these nodes into a complex graph, connecting `Runnable` actions to create more concrete solutions for each case.
+Using `langgraph`, we can orchestrate a set of nodes into a structured graph, connecting `Runnable` actions to build more targeted and intelligent workflows.
 
-In the inline assistant feature, multiple Runnable are being defined as nodes in the graph:
+In the inline assistant feature, several `Runnable` functions are defined as nodes in the graph:
 
 ```python
 builder.add_node("initial_classifier", initial_classifier_node)
@@ -138,14 +138,13 @@ builder.add_node("check_file", check_file_node)
 builder.add_node("suggest_std_upgrade", suggest_std_upgrade_node)
 ```
 
-We want to classify each code sample to be Safe, Vulnerable or Deprecated (which means secure but need to be updated).
-The graph starts with analyzing the current line attempting to make the classification,
-if it cannot make a decision it analyze the line in the context of the scope,
-if it still cannot make a decision - it analyze the line and the scope in the context of the entire file:
+Each code snippet is classified as **Safe**, **Vulnerable**, or **Deprecated** (meaning it is currently secure but should be updated to a newer standard).
+
+The graph starts by analyzing the current line of code in isolation. If a confident classification can't be made, it expands the context to the surrounding scope. If it's still uncertain, it escalates to analyzing the entire file:
 
 ![alt text](assets/langgraph.gif)
 
-This behavior is acheived by defining "edges" between the nodes. Here is for example the edge implementation for the `check_scope` stage. It determines the next node (next `Runnable`) to activate based on the suggestion of the model or based on its `confidence_level`: 
+This behavior is controlled by defining **edges** between nodes. For example, here’s how the edge logic for the `check_scope` node is implemented. It determines the next node (`Runnable`) to activate based on the model's suggestion or the associated `confidence_level`:
 
 ```python
 builder.add_conditional_edges(
