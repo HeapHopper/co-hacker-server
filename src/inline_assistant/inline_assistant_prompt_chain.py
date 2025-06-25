@@ -154,37 +154,47 @@ vulnerability_chain: Runnable = vulnerability_prompt | inline_assistant_llm.with
 ### scope_check
 
 scope_check_prompt = ChatPromptTemplate.from_messages([
-    SystemMessagePromptTemplate.from_template("""
-      You are a C/C++ inline code assistant that provides concise, actionable suggestions - focusing on vulnerability detection and secure code.
-      You will be given the user current line of code - which needs further analysis.
-      The current scope is also provided for context, use it to assess the safety of the line of code.
-      Provide a structured response.
-    """),
-    HumanMessagePromptTemplate.from_template("""
-      Line:
-      ```c++
-      {line}
-      ```
-      scope:
-      ```c++
-      {scope}
-      ```
-      Make sure there are no security issues. Look for Use After Free, Double Free, Out of bounds access, dangerous type casting (signed - unsigned, long-short, etc.)
+  SystemMessagePromptTemplate.from_template("""
+    You are a C/C++ inline code assistant specializing in vulnerability detection and secure code practices.
+    Your task is to analyze a specific line of C/C++ code within its immediate scope to determine if it is secure or vulnerable.
+    Focus especially on memory safety issues, including:
+    - Use After Free (accessing memory after it has been freed or deleted)
+    - Double Free (freeing or deleting the same memory more than once)
+    - Out-of-bounds access (reading/writing outside the bounds of arrays or buffers)
+    - Dangerous type casting (e.g., between signed/unsigned, long/short, or incompatible pointer types)
+    - Any other undefined or unsafe behavior
 
-      Respond with JSON:
-      {{
-        "confidence_level": float,
-        "suggestion_type": "vulnerable" | "std_upgrade" | "file_check" | "safe"
-      }}
-                                             
-    - The confidence_level should be a float between 0.0 and 1.0, indicating how confident you are about the line of code being safe.
-    - suggestion_type should be one of the following:                                                                      
-        - If line of code is likely (0.6 and above) to be secure in the context of the scope - suggestion_type should be "safe".
-        - If there is a plain clear unsecure / undefined behavior e.g. - suggestion_type should be "vulnerable".
-        - if the line is safe but old non-standard copy related methods are mentioned in the line - suggestion_type should be "std_upgrade".
-        - otherwise, meaning: there is not enough information to decide whether or not there is a security issue with the line, even in the context of the scope - suggestion_type should be "file_check".
+    You will be provided:
+    - The current line of code to analyze
+    - The surrounding scope (function, block, or relevant context)
 
-""")
+    Your analysis should be precise and conservative: if there is any reasonable suspicion of a vulnerability, do not mark the code as "safe".
+
+    Respond with a JSON object:
+    {{
+    "confidence_level": float, // 0.0 to 1.0, how confident you are that the line is safe in this scope
+    "suggestion_type": "vulnerable" | "std_upgrade" | "file_check" | "safe"
+    }}
+
+    Guidelines:
+    - If the line is likely (0.6 and above) to be secure in the context of the scope, set "suggestion_type" to "safe".
+    - If you detect clear unsafe or undefined behavior (e.g., use after free, double free, out-of-bounds, dangerous cast), set "suggestion_type" to "vulnerable".
+    - If the line is safe but uses outdated/non-standard methods (e.g., raw pointers, manual memory copy), set "suggestion_type" to "std_upgrade".
+    - If you cannot determine safety even with the scope, set "suggestion_type" to "file_check".
+
+    Be strict: If there is any sign of memory being accessed after deletion, or the same memory being deleted/freed more than once, always mark as "vulnerable".
+    Do not assume code is safe unless you are highly confident.
+  """),
+  HumanMessagePromptTemplate.from_template("""
+    Line:
+    ```c++
+    {line}
+    ```
+    Scope:
+    ```c++
+    {scope}
+    ```
+  """)
 ])
 
 class ScopeCheckResponse(BaseModel):
