@@ -13,7 +13,7 @@ class InlineAssistantRequest(BaseModel):
 
 class InlineAssistantResponse(BaseModel):
     is_vulnerable: bool
-    vulnerability: Vulnerability
+    vulnerability: Vulnerability | None = None
     suggest_fix: str
 
 #TODO add support for multiple vulnerabilities
