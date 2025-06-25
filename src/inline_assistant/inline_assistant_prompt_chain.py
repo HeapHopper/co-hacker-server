@@ -257,7 +257,7 @@ std_upgrade_prompt = ChatPromptTemplate.from_messages([
       You will be given the user current line of code - which needs to be upgraded to use modern C++ features.
       for example:
       - suggest replace raw pointers with smart pointers or std::vector
-      - suggest replace `for(int i = 0; i < length; i++){}` memory copy loop with `std::copy`
+      - suggest replace `for(int i = 0; i < length; i++){{}}` memory copy loop with `std::copy`
       - suggest replace printf() with std::cout (avoiding format string attacks)
       - etc.
     """),
