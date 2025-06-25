@@ -94,8 +94,8 @@ def build_inline_assistant_graph():
         "check_scope",
         lambda state: (
             "handle_vulnerable" if state.suggestion_type == "vulnerable" else
-            "handle_safe" if state.confidence_level >= 0.66 else
             "suggest_std_upgrade" if state.suggestion_type == "std_upgrade" else
+            "handle_safe" if state.confidence_level >= 0.66 else
             "check_file"
         )
     )

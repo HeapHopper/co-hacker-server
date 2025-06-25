@@ -165,6 +165,8 @@ scope_check_prompt = ChatPromptTemplate.from_messages([
     - Dangerous type casting (e.g., between signed/unsigned, long/short, or incompatible pointer types)
     - Any other undefined or unsafe behavior
 
+    Focus on the using deprecated functions, both std and non-std and suggest using modern, supported C++ features.
+                                            
     You will be provided:
     - The current line of code to analyze
     - The surrounding scope (function, block, or relevant context)
@@ -178,9 +180,9 @@ scope_check_prompt = ChatPromptTemplate.from_messages([
     }}
 
     Guidelines:
-    - If the line is likely (0.6 and above) to be secure in the context of the scope, set "suggestion_type" to "safe".
     - If you detect clear unsafe or undefined behavior (e.g., use after free, double free, out-of-bounds, dangerous cast), set "suggestion_type" to "vulnerable".
     - If the line is safe but uses outdated/non-standard methods (e.g., raw pointers, manual memory copy), set "suggestion_type" to "std_upgrade".
+    - If the line is likely (0.6 and above) to be secure in the context of the scope, set "suggestion_type" to "safe".
     - If you cannot determine safety even with the scope, set "suggestion_type" to "file_check".
 
     Be strict: If there is any sign of memory being accessed after deletion, or the same memory being deleted/freed more than once, always mark as "vulnerable".
