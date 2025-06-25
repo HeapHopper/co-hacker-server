@@ -75,11 +75,12 @@ initial_classifier_prompt = ChatPromptTemplate.from_messages([
 
       - The confidence_level should be a float between 0.0 and 1.0, indicating how confident you are about the line of code being safe.
       - unsafe_pattern_detected should be true if you detect any unsafe patterns in the line, otherwise false.
-      - suggestion_type should be one of the following:                                                                      
+      - suggestion_type should be one of the following: 
+        - if memory allocation / deallocation methods or operators are mentioned (malloc(), free(), new, delete, etc.)in the line - suggestion_type should be "scope_check".
+        - same goes for declaring or using raw pointers - suggestion_type should be "scope_check". 
+        ELSE                                                                    
         - If line of code is highly likely (0.9 and above) to be secure, e.g. it is a simple line using only primitives or standard methods/objects - suggestion_type should be "safe".
         - If there is a plain clear unsecure / undefined behavior e.g. use of standard-deprecated unsecure memory related function, integer overflow, etc., - suggestion_type should be "vulnerable".
-        - if memory allocation / deallocation methods or operators are mentioned in the line - suggestion_type should be "scope_check".
-        - same goes for declaring or using raw pointers - suggestion_type should be "scope_check".
         - if the line is safe but old non-standard copy related methods are mentioned in the line - suggestion_type should be "std_upgrade".
         - otherwise, meaning: there is not enough information to decide whether or not there is a security issue with the line - suggestion_type should be "scope_check".
       """)

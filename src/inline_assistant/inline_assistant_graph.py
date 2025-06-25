@@ -82,9 +82,9 @@ def build_inline_assistant_graph():
     builder.add_conditional_edges(
         "initial_classifier",
         lambda state: (
+            "check_scope" if state.suggestion_type == "scope_check" else
             "handle_safe" if state.confidence_level >= 0.9 else
             "handle_vulnerable" if state.unsafe_pattern_detected else
-            "check_scope" if state.suggestion_type == "scope_check" else
             "suggest_std_upgrade" if state.suggestion_type == "std_upgrade" else
             "check_scope"  # fallback
         )    
