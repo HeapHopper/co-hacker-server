@@ -127,15 +127,36 @@ def inline_assistant_node(state: InlineAssistantGraphState) -> dict:
 
 Using `langgraph`, we can orchestrate these nodes into a complex graph, connecting `Runnable` actions to create more concrete solutions for each case.
 
-For now, the graph is composed of a single node:
+In the inline assistant feature, multiple Runnable are being defined as nodes in the graph:
 
 ```python
-def build_inline_assistant_graph():
-    builder = StateGraph(InlineAssistantGraphState)
-    builder.add_node("inline_assistant", inline_assistant_node)
-    builder.set_entry_point("inline_assistant")
-    builder.set_finish_point("inline_assistant")
-    return builder.compile()
+builder.add_node("initial_classifier", initial_classifier_node)
+builder.add_node("handle_safe", handle_safe_node)
+builder.add_node("handle_vulnerable", handle_vulnerable_node)
+builder.add_node("check_scope", check_scope_node)
+builder.add_node("check_file", check_file_node)
+builder.add_node("suggest_std_upgrade", suggest_std_upgrade_node)
+```
+
+We want to classify each code sample to be Safe, Vulnerable or Deprecated (which means secure but need to be updated).
+The graph starts with analyzing the current line attempting to make the classification,
+if it cannot make a decision it analyze the line in the context of the scope,
+if it still cannot make a decision - it analyze the line and the scope in the context of the entire file:
+
+![alt text](assets/langgraph.gif)
+
+This behavior is acheived by defining "edges" between the nodes. Here is for example the edge implementation for the `check_scope` stage. It determines the next node (next `Runnable`) to activate based on the suggestion of the model or based on its `confidence_level`: 
+
+```python
+builder.add_conditional_edges(
+    "check_scope",
+    lambda state: (
+        "handle_vulnerable" if state.suggestion_type == "vulnerable" else
+        "suggest_std_upgrade" if state.suggestion_type == "std_upgrade" else
+        "handle_safe" if state.confidence_level >= 0.66 else
+        "check_file"
+    )
+)
 ```
 
 ### Route
