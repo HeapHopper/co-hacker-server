@@ -1,5 +1,7 @@
 # Co-Hacker Server Repository
 
+![alt text](assets/logo.jpg)
+
 ## The Co-Hacker VSCode Extension
 
 This repository contains a FastAPI backend service for the [Co-Hacker](https://github.com/HeapHopper/co-hacker) VSCode extension. It is not just a REST query router; it is first and foremost where the AI models, prompts, and structured queries are defined and implemented.
@@ -125,17 +127,37 @@ def inline_assistant_node(state: InlineAssistantGraphState) -> dict:
 
 #### Build Complex Graph
 
-Using `langgraph`, we can orchestrate these nodes into a complex graph, connecting `Runnable` actions to create more concrete solutions for each case.
+Using `langgraph`, we can orchestrate a set of nodes into a structured graph, connecting `Runnable` actions to build more targeted and intelligent workflows.
 
-For now, the graph is composed of a single node:
+In the inline assistant feature, several `Runnable` functions are defined as nodes in the graph:
 
 ```python
-def build_inline_assistant_graph():
-    builder = StateGraph(InlineAssistantGraphState)
-    builder.add_node("inline_assistant", inline_assistant_node)
-    builder.set_entry_point("inline_assistant")
-    builder.set_finish_point("inline_assistant")
-    return builder.compile()
+builder.add_node("initial_classifier", initial_classifier_node)
+builder.add_node("handle_safe", handle_safe_node)
+builder.add_node("handle_vulnerable", handle_vulnerable_node)
+builder.add_node("check_scope", check_scope_node)
+builder.add_node("check_file", check_file_node)
+builder.add_node("suggest_std_upgrade", suggest_std_upgrade_node)
+```
+
+Each code snippet is classified as **Safe**, **Vulnerable**, or **Deprecated** (meaning it is currently secure but should be updated to a newer standard).
+
+The graph starts by analyzing the current line of code in isolation. If a confident classification can't be made, it expands the context to the surrounding scope. If it's still uncertain, it escalates to analyzing the entire file:
+
+![alt text](assets/langgraph.gif)
+
+This behavior is controlled by defining **edges** between nodes. For example, here’s how the edge logic for the `check_scope` node is implemented. It determines the next node (`Runnable`) to activate based on the model's suggestion or the associated `confidence_level`:
+
+```python
+builder.add_conditional_edges(
+    "check_scope",
+    lambda state: (
+        "handle_vulnerable" if state.suggestion_type == "vulnerable" else
+        "suggest_std_upgrade" if state.suggestion_type == "std_upgrade" else
+        "handle_safe" if state.confidence_level >= 0.66 else
+        "check_file"
+    )
+)
 ```
 
 ### Route
